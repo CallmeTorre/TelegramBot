@@ -55,18 +55,29 @@ def handle_updates(updates):
 	for update in updates["result"]:
 		text = update["message"]["text"]
 		chat = update["message"]["chat"]["id"]
-		items = db.get_items()
-		if text == "/errase":
+		items = db.get_items(chat)
+		if text == "/erase":
 			keyboard = build_keyboard(items)
 			send_message("Select an item to delete", chat, keyboard)
+		elif text =="/check":
+			items = db.get_items(chat)
+			if items:
+				message = "\n".join(items)
+			else:
+				message = "No To-dos\n"
+			send_message(message, chat)
+		elif text == "/start":
+			send_message("Welcome to your personal To Do list. Send any text to me and I'll store it as an item. Send /erase to remove items and /check to see all your items", chat)
+		elif text.startswith("/"):
+			continue
 		elif text in items:
-			db.delete_item(text)
-			items = db.get_items()
+			db.delete_item(text, chat)
+			items = db.get_items(chat)
 			message ="Remaining:\n" + "\n".join(items)
 			send_message(message, chat)
 		else:
-			db.add_item(text)
-			items = db.get_items()
+			db.add_item(text, chat)
+			items = db.get_items(chat)
 			message = "\n".join(items)
 			send_message(message, chat)
 
