@@ -36,29 +36,39 @@ def get_last_update_id(updates):
 		update_ids.append(int(update["update_id"]))
 	return max(update_ids)
 
-def send_message(text,chat_id):
+def send_message(text,chat_id,reply_markup=None):
 	"""Takes the text of the message we want to send (text) and the chat ID of the chat where we want to send the message (chat_id)"""
 	text = urllib.quote_plus(text)
-	url = URL + "sendMessage?text={}&chat_id={}".format(text, chat_id)
+	url = URL + "sendMessage?text={}&chat_id={}&parse_mode=Markdown".format(text, chat_id)
+	if reply_markup:
+		url += "&reply_markup={}".format(reply_markup)
 	get_url(url)
+
+def build_keyboard(items):
+	"""Constructs the list of items, turning each item into a list to indicate that it should be an entire row of the keyboard"""
+	keyboard = [[item] for item in items]
+	reply_markup = {"keyboard": keyboard, "one_time_keyboard": True}
+	return json.dumps(reply_markup)
 
 def handle_updates(updates):
 	"""Retreive all the items stored and check if the user want to delete or save it"""
 	for update in updates["result"]:
-		try:
-			text = update["message"]["text"]
-			chat = update["message"]["chat"]["id"]
+		text = update["message"]["text"]
+		chat = update["message"]["chat"]["id"]
+		items = db.get_items()
+		if text == "/errase":
+			keyboard = build_keyboard(items)
+			send_message("Select an item to delete", chat, keyboard)
+		elif text in items:
+			db.delete_item(text)
 			items = db.get_items()
-			if text in items:
-				db.delete_item(text)
-				items = db.get_items()
-			else:
-				db.add_item(text)
-				items = db.get_items()
+			message ="Remaining:\n" + "\n".join(items)
+			send_message(message, chat)
+		else:
+			db.add_item(text)
+			items = db.get_items()
 			message = "\n".join(items)
 			send_message(message, chat)
-		except KeyError:
-			pass
 
 def main():
 	db.setup()
